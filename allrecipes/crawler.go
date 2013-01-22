@@ -2,6 +2,8 @@ package allrecipes
 
 import (
   "log"
+  "strings"
+  "regexp"
   "net/http"
   "io/ioutil"
 )
@@ -10,7 +12,16 @@ const HOSTNAME = "http://allrecipes.com/recipes/"
 
 const RECIPE_VIEW_ALL = "ViewAll.aspx"
 
-var recipeUrlList = []string{"pasta/"}
+var (
+  recipeUrlList = []string{"pasta/"}
+  matchRecipe *regexp.Regexp
+  getRecipe *regexp.Regexp
+)
+
+func init() {
+  matchRecipe = regexp.MustCompile("href=\"(.*recipe/.*/detail.aspx)\"")
+  getRecipe = regexp.MustCompile("\"(.*recipe/.*/detail.aspx)\"")
+}
 
 func NewReader() <-chan string {
   r := make(chan string)
@@ -41,9 +52,12 @@ func readPage(url string, r chan<- string) {
     return
   }
 
-  r <- string(body)
+  recipes := filterRecipeLinks(string(body))
+  for recipe := range recipes {
+    r <- string(strings.Trim(getRecipe.FindString(recipes[recipe]), "\""))
+  }
 }
 
 func filterRecipeLinks(body string) []string {
-  return []string{body}
+  return matchRecipe.FindAllString(body, -1)
 }
