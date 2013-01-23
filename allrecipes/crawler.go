@@ -42,23 +42,28 @@ func extractRecipeLink(href string) string {
 }
 
 func readLinksFromUrl(url string, r chan<- string) {
+  log.Println(url + "Starting")
   resp, err := http.Get(url)
   defer resp.Body.Close()
 
   if err != nil {
-    log.Println("Failed to read from " + url)
+    log.Println("Failed to process " + url)
     return
   }
 
   body, err := ioutil.ReadAll(resp.Body)
   if err != nil {
+    log.Println("Failed to read the body for " + url)
     return
   }
 
   recipes := filterRecipeLinks(string(body))
   for recipe := range recipes {
+    log.Println(url + ": Read a recipe")
     r <- extractRecipeLink(recipes[recipe])
   }
+
+  log.Println(url + ": Done")
 }
 
 func filterRecipeLinks(body string) []string {
