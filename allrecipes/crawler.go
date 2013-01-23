@@ -26,9 +26,18 @@ func init() {
 func NewReader() <-chan string {
   // Fan-in pattern
   r := make(chan string)
-  for url := range recipeUrlList {
-    go readLinksFromUrl(recipeUrl(recipeUrlList[url]), r)
-  }
+  r0 := make(chan string)
+
+  go readLinksFromUrl(recipeUrl(recipeUrlList[0]), r0)
+
+  go func() {
+    for {
+      select {
+      case recipe := <-r0:
+        r <- recipe
+      }
+    }
+  }()
 
   return r
 }
