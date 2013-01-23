@@ -24,21 +24,24 @@ func init() {
 }
 
 func NewReader() <-chan string {
-  r := make(chan string)
-
   // Fan-in pattern
+  r := make(chan string)
   for url := range recipeUrlList {
-    go readPage(translateUrl(recipeUrlList[url]), r)
+    go readLinksFromUrl(recipeUrl(recipeUrlList[url]), r)
   }
 
   return r
 }
 
-func translateUrl(url string) string {
+func recipeUrl(url string) string {
   return HOSTNAME + url + RECIPE_VIEW_ALL
 }
 
-func readPage(url string, r chan<- string) {
+func extractRecipeLink(href string) string {
+  return string(strings.Trim(getRecipe.FindString(href), "\""))
+}
+
+func readLinksFromUrl(url string, r chan<- string) {
   resp, err := http.Get(url)
   defer resp.Body.Close()
 
@@ -54,7 +57,7 @@ func readPage(url string, r chan<- string) {
 
   recipes := filterRecipeLinks(string(body))
   for recipe := range recipes {
-    r <- string(strings.Trim(getRecipe.FindString(recipes[recipe]), "\""))
+    r <- extractRecipeLink(recipes[recipe])
   }
 }
 
