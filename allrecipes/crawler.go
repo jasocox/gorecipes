@@ -38,9 +38,15 @@ func NewReader() <-chan string {
 
   recipeReader := make(chan string)
   go func() {
+    recipeHash := make(map[string]string)
     for {
       recipe := <-recipeReader
-      reader <- recipe
+
+      // Ignore any that have alread been found
+      if recipeHash[recipe] == "" {
+        reader <- recipe
+        recipeHash[recipe] = recipe
+      }
     }
   }()
 
