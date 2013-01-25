@@ -13,7 +13,16 @@ const HOSTNAME = "http://allrecipes.com/recipes/"
 const RECIPE_VIEW_ALL = "ViewAll.aspx"
 
 var (
-  recipeUrlList = []string{"pasta/"}
+  recipeUrlList = []string{
+    "pasta/",
+    "appetizers-and-snacks/",
+    "bread/",
+    "breakfast-and-brunch/",
+    "desserts/",
+    "drinks/",
+    "main-dish/",
+  }
+
   matchRecipe *regexp.Regexp
   getRecipe *regexp.Regexp
 )
