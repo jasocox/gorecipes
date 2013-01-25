@@ -10,6 +10,6 @@ func main() {
 
   arReader := allrecipes.NewReader()
   for {
-    fmt.Printf("%s\n", <-arReader);
+    fmt.Printf("\t\t%s\n", <-arReader);
   }
 }

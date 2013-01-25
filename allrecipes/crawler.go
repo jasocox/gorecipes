@@ -19,30 +19,30 @@ var (
 )
 
 func init() {
-  matchRecipe = regexp.MustCompile("href=\"(.*recipe/.*/detail.aspx)\"")
-  getRecipe = regexp.MustCompile("\"(.*recipe/.*/detail.aspx)\"")
+  recipeUrlMatchString := "\"(.*recipe/.*/detail.aspx)\""
+  matchRecipe = regexp.MustCompile("href=" + recipeUrlMatchString)
+  getRecipe = regexp.MustCompile(recipeUrlMatchString)
 }
 
 func NewReader() <-chan string {
-  // Fan-in pattern
-  r := make(chan string)
-  r0 := make(chan string)
+  reader := make(chan string)
 
-  go readLinksFromUrl(recipeUrl(recipeUrlList[0]), r0)
-
+  recipeReader := make(chan string)
   go func() {
     for {
-      select {
-      case recipe := <-r0:
-        r <- recipe
-      }
+      recipe := <-recipeReader
+      reader <- recipe
     }
   }()
 
-  return r
+  for url := range recipeUrlList {
+    addRecipeReader(recipeUrlFromCategory(recipeUrlList[url]), recipeReader)
+  }
+
+  return reader
 }
 
-func recipeUrl(url string) string {
+func recipeUrlFromCategory(url string) string {
   return HOSTNAME + url + RECIPE_VIEW_ALL
 }
 
@@ -50,8 +50,12 @@ func extractRecipeLink(href string) string {
   return string(strings.Trim(getRecipe.FindString(href), "\""))
 }
 
+func addRecipeReader(recipeUrl string, recipeReader chan<- string) {
+  go readLinksFromUrl(recipeUrl, recipeReader)
+}
+
 func readLinksFromUrl(url string, r chan<- string) {
-  log.Println(url + "Starting")
+  log.Println(url + ": Starting")
   resp, err := http.Get(url)
   defer resp.Body.Close()
 
