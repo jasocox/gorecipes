@@ -25,18 +25,24 @@ var (
 
   matchRecipe *regexp.Regexp
   getRecipe *regexp.Regexp
+  matchNext *regexp.Regexp
+  getNext *regexp.Regexp
 )
 
 func init() {
   recipeUrlMatchString := "\"(.*recipe/.*/detail.aspx)\""
   matchRecipe = regexp.MustCompile("href=" + recipeUrlMatchString)
   getRecipe = regexp.MustCompile(recipeUrlMatchString)
+
+  nextUrlMatchString := "\"[^<]*\""
+  matchNext = regexp.MustCompile("<a href=" + nextUrlMatchString + ">NEXT »</a>")
+  getNext = regexp.MustCompile(nextUrlMatchString)
 }
 
 func NewReader() <-chan string {
   reader := make(chan string)
 
-  recipeReader := make(chan string)
+  recipeReader := make(chan string, 1000)
   go func() {
     recipeHash := make(map[string]string)
     for {
@@ -65,8 +71,30 @@ func extractRecipeLink(href string) string {
   return string(strings.Trim(getRecipe.FindString(href), "\""))
 }
 
+func extractNextLink(href string) string {
+  return string(strings.Trim(getNext.FindString(href), "\""))
+}
+
 func addRecipeReader(recipeUrl string, recipeReader chan<- string) {
-  go readLinksFromUrl(recipeUrl, recipeReader)
+  //go readLinksFromUrl(recipeUrl, recipeReader)
+  go readLinksFromUrlAndFollowNext(recipeUrl, recipeReader)
+}
+
+func readLinksFromUrlAndFollowNext(url string, r chan<- string) {
+  body, err := readBodyFromUrl(url)
+  if err != nil {
+    return
+  }
+
+  nextLink := extractNextLink(filterNextLink(body))
+  if nextLink != "" {
+    log.Println(url + ": Found next link: " + nextLink)
+    go readLinksFromBody(url, body, r)
+    go readLinksFromUrlAndFollowNext(nextLink, r)
+  } else {
+    log.Println(url + ": Didn't find a next link")
+    go readLinksFromBody(url, body, r)
+  }
 }
 
 func readLinksFromUrl(url string, r chan<- string) {
@@ -109,4 +137,8 @@ func readBodyFromUrl(url string) (string, error) {
 
 func filterRecipeLinks(body string) []string {
   return matchRecipe.FindAllString(body, -1)
+}
+
+func filterNextLink(body string) string {
+  return matchNext.FindString(body)
 }
