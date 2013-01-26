@@ -6,6 +6,7 @@ import (
   "regexp"
   "net/http"
   "io/ioutil"
+  "gorecipes/recipe"
 )
 
 const HOSTNAME = "http://allrecipes.com/recipes/"
@@ -15,12 +16,7 @@ const RECIPE_VIEW_ALL = "ViewAll.aspx"
 var (
   recipeUrlList = []string{
     "pasta/",
-    "appetizers-and-snacks/",
-    "bread/",
-    "breakfast-and-brunch/",
-    "desserts/",
     "drinks/",
-    "main-dish/",
   }
 
   matchRecipe *regexp.Regexp
@@ -39,25 +35,19 @@ func init() {
   getNext = regexp.MustCompile(nextUrlMatchString)
 }
 
-func NewReader() <-chan string {
-  reader := make(chan string)
+func NewReader() <-chan *recipe.Recipe {
+  reader := make(chan *recipe.Recipe)
 
-  recipeReader := make(chan string, 1000)
+  recipeChannel := make(chan *recipe.Recipe, 100)
   go func() {
-    recipeHash := make(map[string]string)
     for {
-      recipe := <-recipeReader
-
-      // Ignore any that have already been found
-      if recipeHash[recipe] == "" {
-        reader <- recipe
-        recipeHash[recipe] = recipe
-      }
+      recipe := <-recipeChannel
+      reader <- recipe
     }
   }()
 
   for url := range recipeUrlList {
-    addRecipeReaderThatFollowsNext(recipeUrlFromCategory(recipeUrlList[url]), recipeReader)
+    addRecipeFinderThatFollowsNext(recipeUrlFromCategory(recipeUrlList[url]), addRecipeReader(recipeChannel))
   }
 
   return reader
@@ -83,45 +73,72 @@ func filterNextLink(body string) string {
   return matchNext.FindString(body)
 }
 
-func addRecipeReader(recipeUrl string, recipeReader chan<- string) {
-  go readLinksFromUrl(recipeUrl, recipeReader)
+func addRecipeFinder(recipeUrl string, recipeLinkChannel chan<- string) {
+  go findLinksFromUrl(recipeUrl, recipeLinkChannel)
 }
 
-func addRecipeReaderThatFollowsNext(recipeUrl string, recipeReader chan<- string) {
-  go readLinksFromUrlAndFollowNext(recipeUrl, recipeReader)
+func addRecipeFinderThatFollowsNext(recipeUrl string, recipeLinkChannel chan<- string) {
+  go findLinksFromUrlAndFollowNext(recipeUrl, recipeLinkChannel)
 }
 
-func readLinksFromUrlAndFollowNext(url string, r chan<- string) {
+func addRecipeReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
+  recipeFinderChannel := make(chan string)
+
+  go func() {
+    recipeLinkHash := make(map[string]string)
+    for {
+      recipeLink := <-recipeFinderChannel
+
+      if recipeLinkHash[recipeLink] == "" {
+        recipeChannel <- readRecipeLink(recipeLink)
+        recipeLinkHash[recipeLink] = recipeLink
+      }
+    }
+  }()
+
+  return recipeFinderChannel
+}
+
+func readRecipeLink(recipeUrl string) *recipe.Recipe {
+  log.Println(recipeUrl + ": Starting recipe")
+
+  log.Println(recipeUrl + ": Done with recipe")
+
+  return &recipe.Recipe{Name: "Recipe", Link: recipeUrl}
+}
+
+func findLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) {
   body, err := readBodyFromUrl(url)
   if err != nil {
+    log.Println(url + ": Failed to read page of recipe links")
     return
   }
 
   nextLink := extractNextLink(filterNextLink(body))
   if nextLink != "" {
     log.Println(url + ": Found next link")
-    go readLinksFromBody(url, body, r)
-    go readLinksFromUrlAndFollowNext(nextLink, r)
+    go findLinksFromBody(url, body, recipeLinkChannel)
+    go findLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
   } else {
     log.Println(url + ": Didn't find a next link")
-    go readLinksFromBody(url, body, r)
+    go findLinksFromBody(url, body, recipeLinkChannel)
   }
 }
 
-func readLinksFromUrl(url string, r chan<- string) {
+func findLinksFromUrl(url string, recipeLinkChannel chan<- string) {
   body, err := readBodyFromUrl(url)
   if err != nil {
     return
   }
 
-  readLinksFromBody(url, body, r)
+  findLinksFromBody(url, body, recipeLinkChannel)
 }
 
-func readLinksFromBody(url string, body string, r chan<- string) {
+func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string) {
   log.Println(url + ": Starting")
   recipes := filterRecipeLinks(body)
   for recipe := range recipes {
-    r <- extractRecipeLink(recipes[recipe])
+    recipeLinkChannel <- extractRecipeLink(recipes[recipe])
   }
 
   log.Println(url + ": Done")
