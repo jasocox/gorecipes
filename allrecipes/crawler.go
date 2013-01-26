@@ -48,7 +48,7 @@ func NewReader() <-chan string {
     for {
       recipe := <-recipeReader
 
-      // Ignore any that have alread been found
+      // Ignore any that have already been found
       if recipeHash[recipe] == "" {
         reader <- recipe
         recipeHash[recipe] = recipe
@@ -57,7 +57,7 @@ func NewReader() <-chan string {
   }()
 
   for url := range recipeUrlList {
-    addRecipeReader(recipeUrlFromCategory(recipeUrlList[url]), recipeReader)
+    addRecipeReaderThatFollowsNext(recipeUrlFromCategory(recipeUrlList[url]), recipeReader)
   }
 
   return reader
@@ -75,8 +75,19 @@ func extractNextLink(href string) string {
   return string(strings.Trim(getNext.FindString(href), "\""))
 }
 
+func filterRecipeLinks(body string) []string {
+  return matchRecipe.FindAllString(body, -1)
+}
+
+func filterNextLink(body string) string {
+  return matchNext.FindString(body)
+}
+
 func addRecipeReader(recipeUrl string, recipeReader chan<- string) {
-  //go readLinksFromUrl(recipeUrl, recipeReader)
+  go readLinksFromUrl(recipeUrl, recipeReader)
+}
+
+func addRecipeReaderThatFollowsNext(recipeUrl string, recipeReader chan<- string) {
   go readLinksFromUrlAndFollowNext(recipeUrl, recipeReader)
 }
 
@@ -88,7 +99,7 @@ func readLinksFromUrlAndFollowNext(url string, r chan<- string) {
 
   nextLink := extractNextLink(filterNextLink(body))
   if nextLink != "" {
-    log.Println(url + ": Found next link: " + nextLink)
+    log.Println(url + ": Found next link")
     go readLinksFromBody(url, body, r)
     go readLinksFromUrlAndFollowNext(nextLink, r)
   } else {
@@ -110,7 +121,6 @@ func readLinksFromBody(url string, body string, r chan<- string) {
   log.Println(url + ": Starting")
   recipes := filterRecipeLinks(body)
   for recipe := range recipes {
-    log.Println(url + ": Read a recipe")
     r <- extractRecipeLink(recipes[recipe])
   }
 
@@ -133,12 +143,4 @@ func readBodyFromUrl(url string) (string, error) {
   }
 
   return string(body), nil
-}
-
-func filterRecipeLinks(body string) []string {
-  return matchRecipe.FindAllString(body, -1)
-}
-
-func filterNextLink(body string) string {
-  return matchNext.FindString(body)
 }
