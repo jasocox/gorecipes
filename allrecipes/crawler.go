@@ -25,6 +25,8 @@ var (
   getNext *regexp.Regexp
   matchName *regexp.Regexp
   getName *regexp.Regexp
+  matchImageLink *regexp.Regexp
+  getImageLink *regexp.Regexp
 )
 
 func init() {
@@ -39,6 +41,10 @@ func init() {
   nameMatchString := ">[^<>]*<"
   matchName = regexp.MustCompile("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>")
   getName = regexp.MustCompile(nameMatchString)
+
+  imageLinkMatchString := "src=\"[^\"]*\""
+  matchImageLink = regexp.MustCompile("<img id=\"imgPhoto\"[^>]*" +  imageLinkMatchString + "[^>]*>")
+  getImageLink = regexp.MustCompile(imageLinkMatchString)
 }
 
 func NewReader() <-chan *recipe.Recipe {
@@ -176,7 +182,7 @@ func translateNameFromBody(body string) string {
 }
 
 func translateImageLinkFromBody(body string) string {
-  return "ImageLink"
+  return strings.Trim(getImageLink.FindString(matchImageLink.FindString(body))[4:], "\"")
 }
 
 func translateRatingFromBody(body string) int {
