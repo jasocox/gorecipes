@@ -102,9 +102,16 @@ func addRecipeReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
 func readRecipeLink(recipeUrl string) *recipe.Recipe {
   log.Println(recipeUrl + ": Starting recipe")
 
+  body, err := readBodyFromUrl(recipeUrl)
+  if err != nil {
+    log.Println(recipeUrl + ": Failed to read recipe link")
+    return nil
+  }
+
+  r := translateRecipeFromBody(body, recipeUrl)
   log.Println(recipeUrl + ": Done with recipe")
 
-  return &recipe.Recipe{Name: "Recipe", Link: recipeUrl}
+  return &r
 }
 
 func findLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) {
@@ -142,6 +149,17 @@ func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string)
   }
 
   log.Println(url + ": Done")
+}
+
+func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
+  r.Name = translateNameFromBody(body)
+  r.Link = url
+
+  return
+}
+
+func translateNameFromBody(body string) string {
+  return "Recipe"
 }
 
 func readBodyFromUrl(url string) (string, error) {
