@@ -160,12 +160,47 @@ func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string)
 func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.Name = translateNameFromBody(body)
   r.Link = url
+  r.ImageLink = translateImageLinkFromBody(body)
+  r.Rating = translateRatingFromBody(body)
+  r.ReviewsLink = translateReviewsLinkFromBody(body)
+  r.ReadyTime = translateReadyTimeFromBody(body)
+  r.CookTime = translateCookTimeFromBody(body)
+  r.Ingredients = translateIngredientsFromBody(body)
+  r.Directions = translateDirectionsFromBody(body)
 
   return
 }
 
 func translateNameFromBody(body string) string {
   return strings.Trim(getName.FindString(matchName.FindString(body)), "<>")
+}
+
+func translateImageLinkFromBody(body string) string {
+  return "ImageLink"
+}
+
+func translateRatingFromBody(body string) int {
+  return 0
+}
+
+func translateReviewsLinkFromBody(body string) string {
+  return "ReviewsLink"
+}
+
+func translateReadyTimeFromBody(body string) string {
+  return "ReadyTime"
+}
+
+func translateCookTimeFromBody(body string) string {
+  return "CookTime"
+}
+
+func translateIngredientsFromBody(body string) []string {
+  return []string{"Ingredients"}
+}
+
+func translateDirectionsFromBody(body string) []string {
+  return []string{"Directions"}
 }
 
 func readBodyFromUrl(url string) (string, error) {
