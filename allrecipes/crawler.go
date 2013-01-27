@@ -23,6 +23,8 @@ var (
   getRecipe *regexp.Regexp
   matchNext *regexp.Regexp
   getNext *regexp.Regexp
+  matchName *regexp.Regexp
+  getName *regexp.Regexp
 )
 
 func init() {
@@ -33,6 +35,10 @@ func init() {
   nextUrlMatchString := "\"[^<]*\""
   matchNext = regexp.MustCompile("<a href=" + nextUrlMatchString + ">NEXT »</a>")
   getNext = regexp.MustCompile(nextUrlMatchString)
+
+  nameMatchString := ">[^<>]*<"
+  matchName = regexp.MustCompile("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>")
+  getName = regexp.MustCompile(nameMatchString)
 }
 
 func NewReader() <-chan *recipe.Recipe {
@@ -159,7 +165,7 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
 }
 
 func translateNameFromBody(body string) string {
-  return "Recipe"
+  return strings.Trim(getName.FindString(matchName.FindString(body)), "<>")
 }
 
 func readBodyFromUrl(url string) (string, error) {
