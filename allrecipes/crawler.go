@@ -21,14 +21,15 @@ var (
 
   matchRecipe *regexp.Regexp
   getRecipe *regexp.Regexp
-  matchRating *regexp.Regexp
-  getRating *regexp.Regexp
 
   translatorMap map[string]Translator
 )
 
 func init() {
   translatorMap = make(map[string]Translator)
+  trimQuote := func(body string) string {
+                 return strings.Trim(body, "\"")
+               }
 
   recipeUrlMatchString := "\"(.*recipe/.*/detail.aspx)\""
   matchRecipe = regexp.MustCompile("href=" + recipeUrlMatchString)
@@ -37,9 +38,7 @@ func init() {
   nextUrlMatchString := "\"[^<]*\""
   addTranslator("Next", generateTranslatorsFilter("<a href=" + nextUrlMatchString + ">NEXT »</a>",
                                                   nextUrlMatchString, 0,
-                                                  func(body string) string {
-                                                    return strings.Trim(body, "\"")
-                                                  }))
+                                                  trimQuote))
 
   nameMatchString := ">[^<>]*<"
   addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>",
@@ -51,13 +50,12 @@ func init() {
   imageLinkMatchString := "src=\"[^\"]*\""
   addTranslator("ImageLink", generateTranslatorsFilter("<img id=\"imgPhoto\"[^>]*" + imageLinkMatchString + "[^>]*>",
                                                        imageLinkMatchString, 4,
-                                                       func(body string) string {
-                                                        return strings.Trim(body, "\"")
-                                                       }))
+                                                       trimQuote))
 
   ratingMatchString := "content=\"[^\"]*\""
-  matchRating = regexp.MustCompile("<meta itemprop=\"ratingValue\" " + ratingMatchString + "[^>]*>")
-  getRating = regexp.MustCompile(ratingMatchString)
+  addTranslator("Rating", generateTranslatorsFilter("<meta itemprop=\"ratingValue\" " + ratingMatchString + "[^>]*>",
+                                                    ratingMatchString, 8,
+                                                    trimQuote))
 }
 
 type Translator struct {
@@ -83,10 +81,6 @@ func translate(name string, body string) string {
   translator := translatorMap[name]
 
   return translator.Translator(body)
-}
-
-func translateRatingFromBody(body string) string {
-  return strings.Trim(getRating.FindString(matchRating.FindString(body))[8:], "\"")
 }
 
 func NewReader() <-chan *recipe.Recipe {
@@ -201,7 +195,7 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.Name = translate("Name", body)
   r.Link = url
   r.ImageLink = translate("ImageLink", body)
-  r.Rating = translateRatingFromBody(body)
+  r.Rating = translate("Rating", body)
   r.ReviewsLink = translateReviewsLinkFromBody(body)
   r.ReadyTime = translateReadyTimeFromBody(body)
   r.CookTime = translateCookTimeFromBody(body)
