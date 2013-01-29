@@ -21,8 +21,6 @@ var (
 
   matchRecipe *regexp.Regexp
   getRecipe *regexp.Regexp
-  matchName *regexp.Regexp
-  getName *regexp.Regexp
   matchImageLink *regexp.Regexp
   getImageLink *regexp.Regexp
   matchRating *regexp.Regexp
@@ -46,8 +44,11 @@ func init() {
                                                   }))
 
   nameMatchString := ">[^<>]*<"
-  matchName = regexp.MustCompile("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>")
-  getName = regexp.MustCompile(nameMatchString)
+  addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>",
+                                                  nameMatchString, 0,
+                                                  func(body string) string {
+                                                    return strings.Trim(body, "<>")
+                                                  }))
 
   imageLinkMatchString := "src=\"[^\"]*\""
   matchImageLink = regexp.MustCompile("<img id=\"imgPhoto\"[^>]*" + imageLinkMatchString + "[^>]*>")
@@ -81,10 +82,6 @@ func translate(name string, body string) string {
   translator := translatorMap[name]
 
   return translator.Translator(body)
-}
-
-func translateNameFromBody(body string) string {
-  return strings.Trim(getName.FindString(matchName.FindString(body)), "<>")
 }
 
 func translateImageLinkFromBody(body string) string {
@@ -204,7 +201,7 @@ func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string)
 }
 
 func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
-  r.Name = translateNameFromBody(body)
+  r.Name = translate("Name", body)
   r.Link = url
   r.ImageLink = translateImageLinkFromBody(body)
   r.Rating = translateRatingFromBody(body)
