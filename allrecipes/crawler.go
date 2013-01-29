@@ -21,24 +21,29 @@ var (
 
   matchRecipe *regexp.Regexp
   getRecipe *regexp.Regexp
-  matchNext *regexp.Regexp
-  getNext *regexp.Regexp
   matchName *regexp.Regexp
   getName *regexp.Regexp
   matchImageLink *regexp.Regexp
   getImageLink *regexp.Regexp
   matchRating *regexp.Regexp
   getRating *regexp.Regexp
+
+  translatorMap map[string]Translator
 )
 
 func init() {
+  translatorMap = make(map[string]Translator)
+
   recipeUrlMatchString := "\"(.*recipe/.*/detail.aspx)\""
   matchRecipe = regexp.MustCompile("href=" + recipeUrlMatchString)
   getRecipe = regexp.MustCompile(recipeUrlMatchString)
 
   nextUrlMatchString := "\"[^<]*\""
-  matchNext = regexp.MustCompile("<a href=" + nextUrlMatchString + ">NEXT »</a>")
-  getNext = regexp.MustCompile(nextUrlMatchString)
+  addTranslator("Next", generateTranslatorsFilter("<a href=" + nextUrlMatchString + ">NEXT »</a>",
+                                                  nextUrlMatchString, 0,
+                                                  func(body string) string {
+                                                    return strings.Trim(body, "\"")
+                                                  }))
 
   nameMatchString := ">[^<>]*<"
   matchName = regexp.MustCompile("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>")
@@ -48,10 +53,46 @@ func init() {
   matchImageLink = regexp.MustCompile("<img id=\"imgPhoto\"[^>]*" + imageLinkMatchString + "[^>]*>")
   getImageLink = regexp.MustCompile(imageLinkMatchString)
 
-  //<meta itemprop="ratingValue" content="3.5625">
   ratingMatchString := "content=\"[^\"]*\""
   matchRating = regexp.MustCompile("<meta itemprop=\"ratingValue\" " + ratingMatchString + "[^>]*>")
   getRating = regexp.MustCompile(ratingMatchString)
+}
+
+type Translator struct {
+  Name string
+  Translator func(string) string
+}
+
+func addTranslator(name string, translator func(string) string) {
+  translatorMap[name] = Translator{Name: name, Translator: translator}
+}
+
+func generateTranslatorsFilter(matchRegexp string, getRegexp string, cutIndex int,
+                       trimmer func(string) string) func(string) string {
+  matcher := regexp.MustCompile(matchRegexp)
+  getter := regexp.MustCompile(getRegexp)
+
+  return func(body string) string {
+    return trimmer(getter.FindString(matcher.FindString(body))[cutIndex:])
+  }
+}
+
+func translate(name string, body string) string {
+  translator := translatorMap[name]
+
+  return translator.Translator(body)
+}
+
+func translateNameFromBody(body string) string {
+  return strings.Trim(getName.FindString(matchName.FindString(body)), "<>")
+}
+
+func translateImageLinkFromBody(body string) string {
+  return strings.Trim(getImageLink.FindString(matchImageLink.FindString(body))[4:], "\"")
+}
+
+func translateRatingFromBody(body string) string {
+  return strings.Trim(getRating.FindString(matchRating.FindString(body))[8:], "\"")
 }
 
 func NewReader() <-chan *recipe.Recipe {
@@ -80,16 +121,8 @@ func extractRecipeLink(href string) string {
   return string(strings.Trim(getRecipe.FindString(href), "\""))
 }
 
-func extractNextLink(href string) string {
-  return string(strings.Trim(getNext.FindString(href), "\""))
-}
-
 func filterRecipeLinks(body string) []string {
   return matchRecipe.FindAllString(body, -1)
-}
-
-func filterNextLink(body string) string {
-  return matchNext.FindString(body)
 }
 
 func addRecipeFinder(recipeUrl string, recipeLinkChannel chan<- string) {
@@ -140,7 +173,7 @@ func findLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) 
     return
   }
 
-  nextLink := extractNextLink(filterNextLink(body))
+  nextLink := translate("Next", body)
   if nextLink != "" {
     log.Println(url + ": Found next link")
     go findLinksFromBody(url, body, recipeLinkChannel)
@@ -182,18 +215,6 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.Directions = translateDirectionsFromBody(body)
 
   return
-}
-
-func translateNameFromBody(body string) string {
-  return strings.Trim(getName.FindString(matchName.FindString(body)), "<>")
-}
-
-func translateImageLinkFromBody(body string) string {
-  return strings.Trim(getImageLink.FindString(matchImageLink.FindString(body))[4:], "\"")
-}
-
-func translateRatingFromBody(body string) string {
-  return strings.Trim(getRating.FindString(matchRating.FindString(body))[8:], "\"")
 }
 
 func translateReviewsLinkFromBody(body string) string {
