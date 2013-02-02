@@ -37,6 +37,7 @@ func init() {
   addTranslator("CookTimeHours", generateTranslatorsFilter("<span id=\"cookHoursSpan\"><em>([^<>]*)<"))
   addListTranslator("Ingredients", generateListTranslatorsFilter("<span [^>]*class=\"ingredient-name\">([^<>]*)"))
   addListTranslator("Amounts", generateListTranslatorsFilter("<span [^>]*class=\"ingredient-amount\">([^<>]*)"))
+  addListTranslator("Directions", generateListTranslatorsFilter("<span class=\"plaincharacterwrap break\">([^<>]*)</span>"))
 }
 
 type Translator struct {
@@ -212,7 +213,7 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.CookTimeHours = translate("CookTimeHours", body)
   r.Ingredients = translateList("Ingredients", body)
   r.Amounts = translateList("Amounts", body)
-  r.Directions = translateDirectionsFromBody(body)
+  r.Directions = translateList("Directions", body)
 
   return
 }
