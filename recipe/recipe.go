@@ -8,17 +8,21 @@ type Recipe struct {
   ImageLink string
   Rating string
   ReviewsLink string
-  ReadyTime string
-  CookTime string
+  ReadyTimeHours string
+  ReadyTimeMins string
+  CookTimeHours string
+  CookTimeMins string
   Ingredients []string
   Directions []string
 }
 
 func (r *Recipe) String() string {
   return fmt.Sprintf("Recipe: %s\n" + "\tLink: %s\n" + "\tImageLink: %s\n" +
-                     "\tRating: %s\n" + "\tReviewsLink: %s\n" + "\tReadyTime: %s\n" +
-                     "\tCookTime: %s\n" + "\tIngredients: %s\n" +
+                     "\tRating: %s\n" + "\tReviewsLink: %s\n" +
+                     "\tReadyTime: %sh %sm\n" + "\tCookTime: %sh %sm\n" +
+                     "\tIngredients: %s\n" +
                      "\tDirections: %s\n", r.Name, r.Link, r.ImageLink,
-                     r.Rating, r.ReviewsLink, r.ReadyTime, r.CookTime,
-                     r.Ingredients, r.Directions)
+                     r.Rating, r.ReviewsLink, r.ReadyTimeHours, r.ReadyTimeMins,
+                     r.CookTimeHours, r.CookTimeMins, r.Ingredients,
+                     r.Directions)
 }

@@ -27,35 +27,28 @@ var (
 
 func init() {
   translatorMap = make(map[string]Translator)
-  trimQuote := func(body string) string {
-                 return strings.Trim(body, "\"")
-               }
 
   recipeUrlMatchString := "\"(.*recipe/.*/detail.aspx)\""
   matchRecipe = regexp.MustCompile("href=" + recipeUrlMatchString)
   getRecipe = regexp.MustCompile(recipeUrlMatchString)
 
-  nextUrlMatchString := "\"[^<]*\""
-  addTranslator("Next", generateTranslatorsFilter("<a href=" + nextUrlMatchString + ">NEXT »</a>",
-                                                  nextUrlMatchString, 0,
-                                                  trimQuote))
+  addTranslator("Next", generateTranslatorsFilter("<a href=\"([^<]*)\">NEXT »</a>"))
 
-  nameMatchString := ">[^<>]*<"
-  addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*" + nameMatchString + "/h1>",
-                                                  nameMatchString, 0,
-                                                  func(body string) string {
-                                                    return strings.Trim(body, "<>")
-                                                  }))
+  addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*>([^<>]*)</h1>"))
 
-  imageLinkMatchString := "src=\"[^\"]*\""
-  addTranslator("ImageLink", generateTranslatorsFilter("<img id=\"imgPhoto\"[^>]*" + imageLinkMatchString + "[^>]*>",
-                                                       imageLinkMatchString, 4,
-                                                       trimQuote))
+  addTranslator("ImageLink", generateTranslatorsFilter("<img id=\"imgPhoto\"[^>]*src=\"([^\"]*)\"[^>]*>"))
 
-  ratingMatchString := "content=\"[^\"]*\""
-  addTranslator("Rating", generateTranslatorsFilter("<meta itemprop=\"ratingValue\" " + ratingMatchString + "[^>]*>",
-                                                    ratingMatchString, 8,
-                                                    trimQuote))
+  addTranslator("Rating", generateTranslatorsFilter("<meta itemprop=\"ratingValue\" content=\"([^\"]*)\"[^>]*>"))
+
+  addTranslator("ReviewsLink", generateTranslatorsFilter(""))
+
+  addTranslator("ReadyTimeMins", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)"))
+
+  addTranslator("ReadyTimeHours", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)<"))
+
+  addTranslator("CookTimeMins", generateTranslatorsFilter("<span id=\"cookMinsSpan\"><em>([^<>]*)<"))
+
+  addTranslator("CookTimeHours", generateTranslatorsFilter("<span id=\"cookHoursSpan\"><em>([^<>]*)<"))
 }
 
 type Translator struct {
@@ -67,13 +60,19 @@ func addTranslator(name string, translator func(string) string) {
   translatorMap[name] = Translator{Name: name, Translator: translator}
 }
 
-func generateTranslatorsFilter(matchRegexp string, getRegexp string, cutIndex int,
-                       trimmer func(string) string) func(string) string {
+func generateTranslatorsFilter(matchRegexp string) func(string) string {
   matcher := regexp.MustCompile(matchRegexp)
-  getter := regexp.MustCompile(getRegexp)
 
-  return func(body string) string {
-    return trimmer(getter.FindString(matcher.FindString(body))[cutIndex:])
+  return func(body string) (retVal string) {
+    match := matcher.FindStringSubmatch(body)
+
+    if (match == nil) || (len(match) < 2) {
+      retVal = ""
+    } else {
+      retVal = match[1]
+    }
+
+    return retVal
   }
 }
 
@@ -196,25 +195,15 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.Link = url
   r.ImageLink = translate("ImageLink", body)
   r.Rating = translate("Rating", body)
-  r.ReviewsLink = translateReviewsLinkFromBody(body)
-  r.ReadyTime = translateReadyTimeFromBody(body)
-  r.CookTime = translateCookTimeFromBody(body)
+  r.ReviewsLink = translate("ReviewsLink", body)
+  r.ReadyTimeMins = translate("ReadyTimeMins", body)
+  r.ReadyTimeHours = translate("ReadyTimeHours", body)
+  r.CookTimeMins = translate("CookTimeMins", body)
+  r.CookTimeHours = translate("CookTimeHours", body)
   r.Ingredients = translateIngredientsFromBody(body)
   r.Directions = translateDirectionsFromBody(body)
 
   return
-}
-
-func translateReviewsLinkFromBody(body string) string {
-  return "ReviewsLink"
-}
-
-func translateReadyTimeFromBody(body string) string {
-  return "ReadyTime"
-}
-
-func translateCookTimeFromBody(body string) string {
-  return "CookTime"
 }
 
 func translateIngredientsFromBody(body string) []string {
