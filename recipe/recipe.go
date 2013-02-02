@@ -12,6 +12,7 @@ type Recipe struct {
   CookTimeHours string
   CookTimeMins string
   Ingredients []string
+  Amounts []string
   Directions []string
 }
 
@@ -19,8 +20,8 @@ func (r *Recipe) String() string {
   return fmt.Sprintf("Recipe: %s\n" + "\tLink: %s\n" + "\tImageLink: %s\n" +
                      "\tRating: %s\n" + "\tReadyTime: %sh %sm\n" +
                      "\tCookTime: %sh %sm\n" + "\tIngredients: %s\n" +
-                     "\tDirections: %s\n", r.Name, r.Link, r.ImageLink,
-                     r.Rating, r.ReadyTimeHours, r.ReadyTimeMins,
-                     r.CookTimeHours, r.CookTimeMins, r.Ingredients,
+                     "\tAmounts: %s\n" + "\tDirections: %s\n", r.Name, r.Link,
+                     r.ImageLink, r.Rating, r.ReadyTimeHours, r.ReadyTimeMins,
+                     r.CookTimeHours, r.CookTimeMins, r.Ingredients, r.Amounts,
                      r.Directions)
 }
