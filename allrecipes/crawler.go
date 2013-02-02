@@ -2,7 +2,6 @@ package allrecipes
 
 import (
   "log"
-  "strings"
   "regexp"
   "net/http"
   "io/ioutil"
@@ -19,18 +18,15 @@ var (
     "drinks/",
   }
 
-  matchRecipe *regexp.Regexp
-  getRecipe *regexp.Regexp
-
   translatorMap map[string]Translator
+  listTranslatorMap map[string]ListTranslator
 )
 
 func init() {
   translatorMap = make(map[string]Translator)
+  listTranslatorMap = make(map[string]ListTranslator)
 
-  recipeUrlMatchString := "\"(.*recipe/.*/detail.aspx)\""
-  matchRecipe = regexp.MustCompile("href=" + recipeUrlMatchString)
-  getRecipe = regexp.MustCompile(recipeUrlMatchString)
+  addListTranslator("Recipe", generateListTranslatorsFilter("href=\"(.*recipe/.*/detail.aspx)\""))
 
   addTranslator("Next", generateTranslatorsFilter("<a href=\"([^<]*)\">NEXT »</a>"))
 
@@ -54,8 +50,17 @@ type Translator struct {
   Translator func(string) string
 }
 
+type ListTranslator struct {
+  Name string
+  Translator func(string) []string
+}
+
 func addTranslator(name string, translator func(string) string) {
   translatorMap[name] = Translator{Name: name, Translator: translator}
+}
+
+func addListTranslator(name string, translator func(string) []string) {
+  listTranslatorMap[name] = ListTranslator{Name: name, Translator: translator}
 }
 
 func generateTranslatorsFilter(matchRegexp string) func(string) string {
@@ -70,12 +75,34 @@ func generateTranslatorsFilter(matchRegexp string) func(string) string {
       retVal = match[1]
     }
 
-    return retVal
+    return
+  }
+}
+
+func generateListTranslatorsFilter(matchRegexp string) func(string) []string {
+  matcher := regexp.MustCompile(matchRegexp)
+
+  return func(body string) (retVal []string) {
+    match := matcher.FindAllStringSubmatch(body, -1)
+
+    if match != nil {
+      for i := range match {
+        retVal = append(retVal, match[i][1])
+      }
+    }
+
+    return
   }
 }
 
 func translate(name string, body string) string {
   translator := translatorMap[name]
+
+  return translator.Translator(body)
+}
+
+func translateList(name string, body string) []string {
+  translator := listTranslatorMap[name]
 
   return translator.Translator(body)
 }
@@ -100,14 +127,6 @@ func NewReader() <-chan *recipe.Recipe {
 
 func recipeUrlFromCategory(url string) string {
   return HOSTNAME + url + RECIPE_VIEW_ALL
-}
-
-func extractRecipeLink(href string) string {
-  return string(strings.Trim(getRecipe.FindString(href), "\""))
-}
-
-func filterRecipeLinks(body string) []string {
-  return matchRecipe.FindAllString(body, -1)
 }
 
 func addRecipeFinder(recipeUrl string, recipeLinkChannel chan<- string) {
@@ -180,9 +199,9 @@ func findLinksFromUrl(url string, recipeLinkChannel chan<- string) {
 
 func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string) {
   log.Println(url + ": Starting")
-  recipes := filterRecipeLinks(body)
+  recipes := translateList("Recipe", body)
   for recipe := range recipes {
-    recipeLinkChannel <- extractRecipeLink(recipes[recipe])
+    recipeLinkChannel <- recipes[recipe]
   }
 
   log.Println(url + ": Done")
