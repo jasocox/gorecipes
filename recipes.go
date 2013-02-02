@@ -9,7 +9,9 @@ func main() {
   fmt.Println("Starting..");
 
   arReader := allrecipes.NewReader()
+  count := 0
   for {
-    fmt.Printf("%s\n", <-arReader);
+    count++
+    fmt.Printf("%d: %s\n", count, <-arReader);
   }
 }

@@ -40,8 +40,6 @@ func init() {
 
   addTranslator("Rating", generateTranslatorsFilter("<meta itemprop=\"ratingValue\" content=\"([^\"]*)\"[^>]*>"))
 
-  addTranslator("ReviewsLink", generateTranslatorsFilter(""))
-
   addTranslator("ReadyTimeMins", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)"))
 
   addTranslator("ReadyTimeHours", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)<"))
@@ -195,7 +193,6 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.Link = url
   r.ImageLink = translate("ImageLink", body)
   r.Rating = translate("Rating", body)
-  r.ReviewsLink = translate("ReviewsLink", body)
   r.ReadyTimeMins = translate("ReadyTimeMins", body)
   r.ReadyTimeHours = translate("ReadyTimeHours", body)
   r.CookTimeMins = translate("CookTimeMins", body)
