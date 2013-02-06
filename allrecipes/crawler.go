@@ -20,13 +20,15 @@ var (
 
   translatorMap map[string]Translator
   listTranslatorMap map[string]ListTranslator
+  listTupleTranslatorMap map[string]ListTupleTranslator
 )
 
 func init() {
   translatorMap = make(map[string]Translator)
   listTranslatorMap = make(map[string]ListTranslator)
+  listTupleTranslatorMap = make(map[string]ListTupleTranslator)
 
-  addListTranslator("Recipe", generateListTranslatorsFilter("href=\"(.*recipe/.*/detail.aspx)\""))
+  addListTranslator("RecipeLink", generateListTranslatorsFilter("href=\"(.*recipe/.*/detail.aspx)\""))
   addTranslator("Next", generateTranslatorsFilter("<a href=\"([^<]*)\">NEXT »</a>"))
   addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*>([^<>]*)</h1>"))
   addTranslator("ImageLink", generateTranslatorsFilter("<img id=\"imgPhoto\"[^>]*src=\"([^\"]*)\"[^>]*>"))
@@ -35,9 +37,10 @@ func init() {
   addTranslator("ReadyTimeHours", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)<"))
   addTranslator("CookTimeMins", generateTranslatorsFilter("<span id=\"cookMinsSpan\"><em>([^<>]*)<"))
   addTranslator("CookTimeHours", generateTranslatorsFilter("<span id=\"cookHoursSpan\"><em>([^<>]*)<"))
-  addListTranslator("Ingredients", generateListTranslatorsFilter("<span [^>]*class=\"ingredient-name\">([^<>]*)"))
-  addListTranslator("Amounts", generateListTranslatorsFilter("<span [^>]*class=\"ingredient-amount\">([^<>]*)"))
   addListTranslator("Directions", generateListTranslatorsFilter("<span class=\"plaincharacterwrap break\">([^<>]*)</span>"))
+  addListTupleTranslator("AmountsAndIngredients",
+    generateListTupleTranslatorsFilter("(<span [^>]*class=\"ingredient-amount\">([^<>]*)</span>)?[^<>]*" +
+                                       "<span [^>]*class=\"ingredient-name\">([^<>]*)</span>"))
 }
 
 type Translator struct {
@@ -50,12 +53,21 @@ type ListTranslator struct {
   Translator func(string) []string
 }
 
+type ListTupleTranslator struct {
+  Name string
+  Translator func(string) [][2]string
+}
+
 func addTranslator(name string, translator func(string) string) {
   translatorMap[name] = Translator{Name: name, Translator: translator}
 }
 
 func addListTranslator(name string, translator func(string) []string) {
   listTranslatorMap[name] = ListTranslator{Name: name, Translator: translator}
+}
+
+func addListTupleTranslator(name string, translator func(string) [][2]string) {
+  listTupleTranslatorMap[name] = ListTupleTranslator{Name: name, Translator: translator}
 }
 
 func generateTranslatorsFilter(matchRegexp string) func(string) string {
@@ -82,7 +94,27 @@ func generateListTranslatorsFilter(matchRegexp string) func(string) []string {
 
     if match != nil {
       for i := range match {
-        retVal = append(retVal, match[i][1])
+        if match[i] != nil && (len(match[i]) > 1) {
+          retVal = append(retVal, match[i][1])
+        }
+      }
+    }
+
+    return
+  }
+}
+
+func generateListTupleTranslatorsFilter(matchRegexp string) func(string) [][2]string {
+  matcher := regexp.MustCompile(matchRegexp)
+
+  return func(body string) (retVal [][2]string) {
+    match := matcher.FindAllStringSubmatch(body, -1)
+
+    if match != nil {
+      for i := range match {
+        if match[i] != nil && (len(match[i]) > 2) && match[i][3] != "&nbsp;" {
+          retVal = append(retVal, [2]string{match[i][2], match[i][3]})
+        }
       }
     }
 
@@ -98,6 +130,12 @@ func translate(name string, body string) string {
 
 func translateList(name string, body string) []string {
   translator := listTranslatorMap[name]
+
+  return translator.Translator(body)
+}
+
+func translateListTuple(name string, body string) [][2]string {
+  translator := listTupleTranslatorMap[name]
 
   return translator.Translator(body)
 }
@@ -194,7 +232,7 @@ func findLinksFromUrl(url string, recipeLinkChannel chan<- string) {
 
 func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string) {
   log.Println(url + ": Starting")
-  recipes := translateList("Recipe", body)
+  recipes := translateList("RecipeLink", body)
   for recipe := range recipes {
     recipeLinkChannel <- recipes[recipe]
   }
@@ -211,8 +249,7 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.ReadyTimeHours = translate("ReadyTimeHours", body)
   r.CookTimeMins = translate("CookTimeMins", body)
   r.CookTimeHours = translate("CookTimeHours", body)
-  r.Ingredients = translateList("Ingredients", body)
-  r.Amounts = translateList("Amounts", body)
+  r.AmountsAndIngredients = translateListTuple("AmountsAndIngredients", body)
   r.Directions = translateList("Directions", body)
 
   return

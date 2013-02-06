@@ -11,16 +11,15 @@ type Recipe struct {
   ReadyTimeMins string
   CookTimeHours string
   CookTimeMins string
-  Ingredients []string
-  Amounts []string
+  AmountsAndIngredients [][2]string
   Directions []string
 }
 
-func ingredientsListWithAmounts(ingredients []string, amounts []string) string {
+func ingredientsListWithAmounts(amountsAndIngredients [][2]string) string {
   retVal := "Ingredients:\n"
 
-  for i := range ingredients {
-    retVal += fmt.Sprintf("\t\t%s %s\n", amounts[i], ingredients[i])
+  for i := range amountsAndIngredients {
+    retVal += fmt.Sprintf("\t\t%s %s\n", amountsAndIngredients[i][0], amountsAndIngredients[i][1])
   }
 
   return retVal
@@ -42,6 +41,6 @@ func (r *Recipe) String() string {
                      "\tCookTime: %sh %sm\n" + "\t%s\n" + "\t%s\n",
                      r.Name, r.Link, r.ImageLink, r.Rating, r.ReadyTimeHours,
                      r.ReadyTimeMins, r.CookTimeHours, r.CookTimeMins,
-                     ingredientsListWithAmounts(r.Ingredients, r.Amounts),
+                     ingredientsListWithAmounts(r.AmountsAndIngredients),
                      directions(r.Directions))
 }
