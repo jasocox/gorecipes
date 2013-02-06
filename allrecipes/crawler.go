@@ -8,16 +8,9 @@ import (
   "gorecipes/recipe"
 )
 
-const HOSTNAME = "http://allrecipes.com/recipes/"
-
-const RECIPE_VIEW_ALL = "ViewAll.aspx"
+const RECIPE_VIEW_ALL = "http://allrecipes.com/recipes/ViewAll.aspx"
 
 var (
-  recipeUrlList = []string{
-    "pasta/",
-    "drinks/",
-  }
-
   translatorMap map[string]Translator
   listTranslatorMap map[string]ListTranslator
   listTupleTranslatorMap map[string]ListTupleTranslator
@@ -151,23 +144,9 @@ func NewReader() <-chan *recipe.Recipe {
     }
   }()
 
-  for url := range recipeUrlList {
-    addRecipeFinderThatFollowsNext(recipeUrlFromCategory(recipeUrlList[url]), addRecipeReader(recipeChannel))
-  }
+  go findLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, addRecipeReader(recipeChannel))
 
   return reader
-}
-
-func recipeUrlFromCategory(url string) string {
-  return HOSTNAME + url + RECIPE_VIEW_ALL
-}
-
-func addRecipeFinder(recipeUrl string, recipeLinkChannel chan<- string) {
-  go findLinksFromUrl(recipeUrl, recipeLinkChannel)
-}
-
-func addRecipeFinderThatFollowsNext(recipeUrl string, recipeLinkChannel chan<- string) {
-  go findLinksFromUrlAndFollowNext(recipeUrl, recipeLinkChannel)
 }
 
 func addRecipeReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
@@ -253,10 +232,6 @@ func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
   r.Directions = translateList("Directions", body)
 
   return
-}
-
-func translateDirectionsFromBody(body string) []string {
-  return []string{"Directions"}
 }
 
 func readBodyFromUrl(url string) (string, error) {
