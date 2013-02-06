@@ -17,7 +17,7 @@ var (
 func init() {
   translatorMap = make(map[string]Translator)
 
-  addTranslator("RecipeLink", generateListTranslatorsFilter("href=\"(.*recipe/.*/detail.aspx)\""))
+  addTranslator("RecipeLink", generateListTranslatorsFilter("<a[^>]*id=\"[^\"]*_lnkRecipeTitle\"[^>]*href=\"(.*recipe/.*/detail.aspx)\""))
   addTranslator("Next", generateTranslatorsFilter("<a href=\"([^<]*)\">NEXT »</a>"))
   addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*>([^<>]*)</h1>"))
   addTranslator("ImageLink", generateTranslatorsFilter("<img id=\"imgPhoto\"[^>]*src=\"([^\"]*)\"[^>]*>"))
