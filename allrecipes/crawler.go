@@ -96,22 +96,10 @@ func generateListTupleTranslatorsFilter(matchRegexp string) func(string) interfa
   }
 }
 
-func translate(name string, body string) string {
+func translate(name string, body string) interface{} {
   translator := translatorMap[name]
 
-  return translator.Translator(body).(string)
-}
-
-func translateList(name string, body string) []string {
-  translator := translatorMap[name]
-
-  return translator.Translator(body).([]string)
-}
-
-func translateListTuple(name string, body string) [][2]string {
-  translator := translatorMap[name]
-
-  return translator.Translator(body).([][2]string)
+  return translator.Translator(body)
 }
 
 func NewReader() <-chan *recipe.Recipe {
@@ -170,7 +158,7 @@ func findLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) 
     return
   }
 
-  nextLink := translate("Next", body)
+  nextLink := translate("Next", body).(string)
   if nextLink != "" {
     log.Println(url + ": Found next link")
     go findLinksFromBody(url, body, recipeLinkChannel)
@@ -192,7 +180,7 @@ func findLinksFromUrl(url string, recipeLinkChannel chan<- string) {
 
 func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string) {
   log.Println(url + ": Starting")
-  recipes := translateList("RecipeLink", body)
+  recipes := translate("RecipeLink", body).([]string)
   for recipe := range recipes {
     recipeLinkChannel <- recipes[recipe]
   }
@@ -201,16 +189,16 @@ func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string)
 }
 
 func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
-  r.Name = translate("Name", body)
+  r.Name = translate("Name", body).(string)
   r.Link = url
-  r.ImageLink = translate("ImageLink", body)
-  r.Rating = translate("Rating", body)
-  r.ReadyTimeMins = translate("ReadyTimeMins", body)
-  r.ReadyTimeHours = translate("ReadyTimeHours", body)
-  r.CookTimeMins = translate("CookTimeMins", body)
-  r.CookTimeHours = translate("CookTimeHours", body)
-  r.AmountsAndIngredients = translateListTuple("AmountsAndIngredients", body)
-  r.Directions = translateList("Directions", body)
+  r.ImageLink = translate("ImageLink", body).(string)
+  r.Rating = translate("Rating", body).(string)
+  r.ReadyTimeMins = translate("ReadyTimeMins", body).(string)
+  r.ReadyTimeHours = translate("ReadyTimeHours", body).(string)
+  r.CookTimeMins = translate("CookTimeMins", body).(string)
+  r.CookTimeHours = translate("CookTimeHours", body).(string)
+  r.AmountsAndIngredients = translate("AmountsAndIngredients", body).([][2]string)
+  r.Directions = translate("Directions", body).([]string)
 
   return
 }
