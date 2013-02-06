@@ -8,7 +8,7 @@ import (
 func main() {
   fmt.Println("Starting..");
 
-  arReader := allrecipes.NewReader()
+  arReader := allrecipes.NewRecipeReader()
   count := 0
   for {
     count++

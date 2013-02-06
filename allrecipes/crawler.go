@@ -32,6 +32,22 @@ func init() {
                                        "<span [^>]*class=\"ingredient-name\">([^<>]*)</span>"))
 }
 
+func NewRecipeReader() <-chan *recipe.Recipe {
+  reader := make(chan *recipe.Recipe)
+
+  recipeChannel := make(chan *recipe.Recipe, 100)
+  go func() {
+    for {
+      recipe := <-recipeChannel
+      reader <- recipe
+    }
+  }()
+
+  go findRecipeLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, addRecipeLinkReader(recipeChannel))
+
+  return reader
+}
+
 type Translator struct {
   Name string
   Translator func(string) interface{}
@@ -102,23 +118,7 @@ func translate(name string, body string) interface{} {
   return translator.Translator(body)
 }
 
-func NewReader() <-chan *recipe.Recipe {
-  reader := make(chan *recipe.Recipe)
-
-  recipeChannel := make(chan *recipe.Recipe, 100)
-  go func() {
-    for {
-      recipe := <-recipeChannel
-      reader <- recipe
-    }
-  }()
-
-  go findLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, addRecipeReader(recipeChannel))
-
-  return reader
-}
-
-func addRecipeReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
+func addRecipeLinkReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
   recipeFinderChannel := make(chan string)
 
   go func() {
@@ -151,7 +151,7 @@ func readRecipeLink(recipeUrl string) *recipe.Recipe {
   return &r
 }
 
-func findLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) {
+func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) {
   body, err := readBodyFromUrl(url)
   if err != nil {
     log.Println(url + ": Failed to read page of recipe links")
@@ -162,14 +162,14 @@ func findLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) 
   if nextLink != "" {
     log.Println(url + ": Found next link")
     go findLinksFromBody(url, body, recipeLinkChannel)
-    go findLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
+    go findRecipeLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
   } else {
     log.Println(url + ": Didn't find a next link")
     go findLinksFromBody(url, body, recipeLinkChannel)
   }
 }
 
-func findLinksFromUrl(url string, recipeLinkChannel chan<- string) {
+func findRecipeLinksFromUrl(url string, recipeLinkChannel chan<- string) {
   body, err := readBodyFromUrl(url)
   if err != nil {
     return
