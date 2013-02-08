@@ -17,19 +17,19 @@ var (
 func init() {
   translatorMap = make(map[string]Translator)
 
-  addTranslator("RecipeLink", generateListTranslatorsFilter("<a[^>]*id=\"[^\"]*_lnkRecipeTitle\"[^>]*href=\"(.*recipe/.*/detail.aspx)\""))
-  addTranslator("Next", generateTranslatorsFilter("<a href=\"([^<]*)\">NEXT »</a>"))
-  addTranslator("Name", generateTranslatorsFilter("<h1 id=\"itemTitle\"[^>]*>([^<>]*)</h1>"))
-  addTranslator("ImageLink", generateTranslatorsFilter("<img id=\"imgPhoto\"[^>]*src=\"([^\"]*)\"[^>]*>"))
-  addTranslator("Rating", generateTranslatorsFilter("<meta itemprop=\"ratingValue\" content=\"([^\"]*)\"[^>]*>"))
-  addTranslator("ReadyTimeMins", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)"))
-  addTranslator("ReadyTimeHours", generateTranslatorsFilter("<span id=\"readyMinsSpan\"><em>([^<>]*)<"))
-  addTranslator("CookTimeMins", generateTranslatorsFilter("<span id=\"cookMinsSpan\"><em>([^<>]*)<"))
-  addTranslator("CookTimeHours", generateTranslatorsFilter("<span id=\"cookHoursSpan\"><em>([^<>]*)<"))
-  addTranslator("Directions", generateListTranslatorsFilter("<span class=\"plaincharacterwrap break\">([^<>]*)</span>"))
+  addTranslator("RecipeLink", generateTranslator("<a[^>]*id=\"[^\"]*_lnkRecipeTitle\"[^>]*href=\"(.*recipe/.*/detail.aspx)\"", listFilter))
+  addTranslator("Next", generateTranslator("<a href=\"([^<]*)\">NEXT »</a>", simpleFilter))
+  addTranslator("Name", generateTranslator("<h1 id=\"itemTitle\"[^>]*>([^<>]*)</h1>", simpleFilter))
+  addTranslator("ImageLink", generateTranslator("<img id=\"imgPhoto\"[^>]*src=\"([^\"]*)\"[^>]*>", simpleFilter))
+  addTranslator("Rating", generateTranslator("<meta itemprop=\"ratingValue\" content=\"([^\"]*)\"[^>]*>", simpleFilter))
+  addTranslator("ReadyTimeMins", generateTranslator("<span id=\"readyMinsSpan\"><em>([^<>]*)", simpleFilter))
+  addTranslator("ReadyTimeHours", generateTranslator("<span id=\"readyMinsSpan\"><em>([^<>]*)<", simpleFilter))
+  addTranslator("CookTimeMins", generateTranslator("<span id=\"cookMinsSpan\"><em>([^<>]*)<", simpleFilter))
+  addTranslator("CookTimeHours", generateTranslator("<span id=\"cookHoursSpan\"><em>([^<>]*)<", simpleFilter))
+  addTranslator("Directions", generateTranslator("<span class=\"plaincharacterwrap break\">([^<>]*)</span>", listFilter))
   addTranslator("AmountsAndIngredients",
-    generateListTupleTranslatorsFilter("(<span [^>]*class=\"ingredient-amount\">([^<>]*)</span>)?[^<>]*" +
-                                       "<span [^>]*class=\"ingredient-name\">([^<>]*)</span>"))
+    generateTranslator("(<span [^>]*class=\"ingredient-amount\">([^<>]*)</span>)?[^<>]*" +
+                       "<span [^>]*class=\"ingredient-name\">([^<>]*)</span>", listTupleFilter))
 }
 
 func NewRecipeReader() <-chan *recipe.Recipe {
@@ -57,59 +57,55 @@ func addTranslator(name string, translator func(string) interface{}) {
   translatorMap[name] = Translator{Name: name, Translator: translator}
 }
 
-func generateTranslatorsFilter(matchRegexp string) func(string) interface{} {
+func generateTranslator(matchRegexp string, filter func (string, *regexp.Regexp) interface{}) func(string) interface{} {
   matcher := regexp.MustCompile(matchRegexp)
 
   return func(body string) interface{} {
-    var retVal string
-    match := matcher.FindStringSubmatch(body)
-
-    if (match == nil) || (len(match) < 2) {
-      retVal = ""
-    } else {
-      retVal = match[1]
-    }
-
-    return retVal
+    return filter(body, matcher)
   }
 }
 
-func generateListTranslatorsFilter(matchRegexp string) func(string) interface{} {
-  matcher := regexp.MustCompile(matchRegexp)
+func simpleFilter(body string, matcher *regexp.Regexp) interface{} {
+  var retVal string
+  match := matcher.FindStringSubmatch(body)
 
-  return func(body string) interface{} {
-    var retVal []string
-    match := matcher.FindAllStringSubmatch(body, -1)
-
-    if match != nil {
-      for i := range match {
-        if match[i] != nil && (len(match[i]) > 1) {
-          retVal = append(retVal, match[i][1])
-        }
-      }
-    }
-
-    return retVal
+  if (match == nil) || (len(match) < 2) {
+    retVal = ""
+  } else {
+    retVal = match[1]
   }
+
+  return retVal
 }
 
-func generateListTupleTranslatorsFilter(matchRegexp string) func(string) interface{} {
-  matcher := regexp.MustCompile(matchRegexp)
+func listFilter(body string, matcher *regexp.Regexp) interface{} {
+  var retVal []string
+  match := matcher.FindAllStringSubmatch(body, -1)
 
-  return func(body string) interface{} {
-    var retVal [][2]string
-    match := matcher.FindAllStringSubmatch(body, -1)
-
-    if match != nil {
-      for i := range match {
-        if match[i] != nil && (len(match[i]) > 2) && match[i][3] != "&nbsp;" {
-          retVal = append(retVal, [2]string{match[i][2], match[i][3]})
-        }
+  if match != nil {
+    for i := range match {
+      if match[i] != nil && (len(match[i]) > 1) {
+        retVal = append(retVal, match[i][1])
       }
     }
-
-    return retVal
   }
+
+  return retVal
+}
+
+func listTupleFilter(body string, matcher *regexp.Regexp) interface{} {
+  var retVal [][2]string
+  match := matcher.FindAllStringSubmatch(body, -1)
+
+  if match != nil {
+    for i := range match {
+      if match[i] != nil && (len(match[i]) > 2) && match[i][3] != "&nbsp;" {
+        retVal = append(retVal, [2]string{match[i][2], match[i][3]})
+      }
+    }
+  }
+
+  return retVal
 }
 
 func translate(name string, body string) interface{} {
