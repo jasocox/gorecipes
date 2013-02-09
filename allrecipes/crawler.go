@@ -102,15 +102,6 @@ func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- st
   }
 }
 
-func findRecipeLinksFromUrl(url string, recipeLinkChannel chan<- string) {
-  body, err := readBodyFromUrl(url)
-  if err != nil {
-    return
-  }
-
-  findLinksFromBody(url, body, recipeLinkChannel)
-}
-
 func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string) {
   log.Println(url + ": Starting")
   recipes := translate("RecipeLink", body).([]string)
