@@ -6,12 +6,22 @@ import (
 )
 
 func main() {
-  fmt.Println("Starting..");
+  fmt.Println("Starting..")
 
-  arReader := allrecipes.NewRecipeReader()
+  arReader, messageBox := allrecipes.NewRecipeReader()
   count := 0
-  for {
-    count++
-    fmt.Printf("%d: %s\n", count, <-arReader);
+  continueReading := true
+  for continueReading {
+    select {
+    case r := <-arReader:
+      count++
+      fmt.Printf("%d: %s\n", count, r);
+    case message := <-messageBox:
+      if message == "done" {
+        continueReading = false
+      }
+    }
   }
+
+  fmt.Println("Done.")
 }

@@ -22,27 +22,33 @@ func init() {
     []interface{}{"CookTimeHours", "<span id=\"cookHoursSpan\"><em>([^<>]*)<", simpleFilter},
     []interface{}{"Directions", "<span class=\"plaincharacterwrap break\">([^<>]*)</span>", listFilter},
     []interface{}{"AmountsAndIngredients", "(<span [^>]*class=\"ingredient-amount\">([^<>]*)</span>)?[^<>]*" +
-      "<span [^>]*class=\"ingredient-name\">([^<>]*)</span>",
-      listTupleFilter},
+      "<span [^>]*class=\"ingredient-name\">([^<>]*)</span>", listTupleFilter},
   }
 
   generateTranslators(translatorConfig)
 }
 
-func NewRecipeReader() <-chan *recipe.Recipe {
+func NewRecipeReader() (<-chan *recipe.Recipe, <-chan string) {
   reader := make(chan *recipe.Recipe)
+  messageBox := make(chan string)
 
   recipeChannel := make(chan *recipe.Recipe, 100)
   go func() {
+    count := 0
     for {
+      count++
       recipe := <-recipeChannel
       reader <- recipe
+      if count >= 1 {
+        messageBox <- "done"
+        break
+      }
     }
   }()
 
   go findRecipeLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, addRecipeLinkReader(recipeChannel))
 
-  return reader
+  return reader, messageBox
 }
 
 func addRecipeLinkReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
