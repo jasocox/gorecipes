@@ -48,7 +48,7 @@ func NewRecipeReader() (<-chan *recipe.Recipe, <-chan string) {
 
   linkChannel := make(chan string, 1000)
   addRecipeLinkReader(linkChannel, recipeChannel)
-  go findRecipeLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, linkChannel)
+  go startRecipeLinkFinder(RECIPE_VIEW_ALL, linkChannel)
 
   return reader, messageBox
 }
@@ -88,7 +88,12 @@ func readRecipeLink(recipeUrl string) *recipe.Recipe {
   return &r
 }
 
+func startRecipeLinkFinder(url string, recipeLinkChannel chan<- string) {
+  go findRecipeLinksFromUrlAndFollowNext(url, recipeLinkChannel)
+}
+
 func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) {
+  log.Println(url + ": Starting")
   body, err := readBodyFromUrl(url)
   if err != nil {
     log.Println(url + ": Failed to read page of recipe links")
@@ -98,22 +103,20 @@ func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- st
   nextLink := translate("Next", body).(string)
   if nextLink != "" {
     log.Println(url + ": Found next link")
-    go findLinksFromBody(url, body, recipeLinkChannel)
+    go findLinksFromBodyAndSend(url, body, recipeLinkChannel)
     go findRecipeLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
   } else {
     log.Println(url + ": Didn't find a next link")
-    go findLinksFromBody(url, body, recipeLinkChannel)
+    go findLinksFromBodyAndSend(url, body, recipeLinkChannel)
   }
+  log.Println(url + ": Done")
 }
 
-func findLinksFromBody(url string, body string, recipeLinkChannel chan<- string) {
-  log.Println(url + ": Starting")
+func findLinksFromBodyAndSend(url string, body string, recipeLinkChannel chan<- string) {
   recipes := translate("RecipeLink", body).([]string)
   for recipe := range recipes {
     recipeLinkChannel <- recipes[recipe]
   }
-
-  log.Println(url + ": Done")
 }
 
 func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
