@@ -54,17 +54,23 @@ func NewRecipeReader() (<-chan *recipe.Recipe, <-chan string) {
 }
 
 func addRecipeLinkReader(linkFindingChannel <-chan string, recipeChannel chan<- *recipe.Recipe) {
-  go func() {
-    recipeLinkHash := make(map[string]string)
-    for {
-      recipeLink := <-linkFindingChannel
+  addRecipeLinkReaders(linkFindingChannel, recipeChannel, 1)
+}
 
-      if recipeLinkHash[recipeLink] == "" {
-        recipeChannel <- readRecipeLink(recipeLink)
-        recipeLinkHash[recipeLink] = recipeLink
+func addRecipeLinkReaders(linkFindingChannel <-chan string, recipeChannel chan<- *recipe.Recipe, processes int) {
+  for i:=0; i<processes; i++ {
+    go func() {
+      recipeLinkHash := make(map[string]string)
+      for {
+        recipeLink := <-linkFindingChannel
+
+        if recipeLinkHash[recipeLink] == "" {
+          recipeChannel <- readRecipeLink(recipeLink)
+          recipeLinkHash[recipeLink] = recipeLink
+        }
       }
-    }
-  }()
+    }()
+  }
 }
 
 func readRecipeLink(recipeUrl string) *recipe.Recipe {
