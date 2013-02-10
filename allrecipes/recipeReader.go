@@ -46,7 +46,7 @@ func NewRecipeReader() (<-chan *recipe.Recipe, <-chan string) {
 
   linkChannel := make(chan string, 1000)
   addRecipeLinkReader(linkChannel, recipeChannel)
-  go startRecipeLinkFinder(RECIPE_VIEW_ALL, linkChannel)
+  startRecipeLinkFinder(RECIPE_VIEW_ALL, linkChannel)
 
   return reader, messageBox
 }
