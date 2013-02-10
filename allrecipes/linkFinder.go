@@ -13,12 +13,13 @@ func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- st
   nextLink := translate("Next", body).(string)
   if nextLink != "" {
     log.Println(url + ": Found next link")
-    go findLinksFromBodyAndSend(url, body, recipeLinkChannel)
     go findRecipeLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
   } else {
     log.Println(url + ": Didn't find a next link")
-    go findLinksFromBodyAndSend(url, body, recipeLinkChannel)
   }
+
+  go findLinksFromBodyAndSend(url, body, recipeLinkChannel)
+
   log.Println(url + ": Done")
 }
 
