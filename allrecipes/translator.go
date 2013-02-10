@@ -75,7 +75,7 @@ func listTupleFilter(body string, matcher *regexp.Regexp) interface{} {
   return retVal
 }
 
-func translate(name string, body string) interface{} {
+func translateHtml(name string, body string) interface{} {
   translator := translatorMap[name]
 
   return translator.Translator(body)

@@ -10,7 +10,7 @@ func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- st
     return
   }
 
-  nextLink := translate("Next", body).(string)
+  nextLink := translateHtml("Next", body).(string)
   if nextLink != "" {
     log.Println(url + ": Found next link")
     go findRecipeLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
@@ -24,7 +24,7 @@ func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- st
 }
 
 func findLinksFromBodyAndSend(url string, body string, recipeLinkChannel chan<- string) {
-  recipes := translate("RecipeLink", body).([]string)
+  recipes := translateHtml("RecipeLink", body).([]string)
   for recipe := range recipes {
     recipeLinkChannel <- recipes[recipe]
   }

@@ -91,16 +91,16 @@ func startRecipeLinkFinder(url string, recipeLinkChannel chan<- string) {
 }
 
 func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
-  r.Name = translate("Name", body).(string)
+  r.Name = translateHtml("Name", body).(string)
   r.Link = url
-  r.ImageLink = translate("ImageLink", body).(string)
-  r.Rating = translate("Rating", body).(string)
-  r.ReadyTimeMins = translate("ReadyTimeMins", body).(string)
-  r.ReadyTimeHours = translate("ReadyTimeHours", body).(string)
-  r.CookTimeMins = translate("CookTimeMins", body).(string)
-  r.CookTimeHours = translate("CookTimeHours", body).(string)
-  r.AmountsAndIngredients = translate("AmountsAndIngredients", body).([][2]string)
-  r.Directions = translate("Directions", body).([]string)
+  r.ImageLink = translateHtml("ImageLink", body).(string)
+  r.Rating = translateHtml("Rating", body).(string)
+  r.ReadyTimeMins = translateHtml("ReadyTimeMins", body).(string)
+  r.ReadyTimeHours = translateHtml("ReadyTimeHours", body).(string)
+  r.CookTimeMins = translateHtml("CookTimeMins", body).(string)
+  r.CookTimeHours = translateHtml("CookTimeHours", body).(string)
+  r.AmountsAndIngredients = translateHtml("AmountsAndIngredients", body).([][2]string)
+  r.Directions = translateHtml("Directions", body).([]string)
 
   return
 }
