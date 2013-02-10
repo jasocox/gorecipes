@@ -46,18 +46,18 @@ func NewRecipeReader() (<-chan *recipe.Recipe, <-chan string) {
     }
   }()
 
-  go findRecipeLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, addRecipeLinkReader(recipeChannel))
+  linkChannel := make(chan string, 1000)
+  addRecipeLinkReader(linkChannel, recipeChannel)
+  go findRecipeLinksFromUrlAndFollowNext(RECIPE_VIEW_ALL, linkChannel)
 
   return reader, messageBox
 }
 
-func addRecipeLinkReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
-  recipeFinderChannel := make(chan string)
-
+func addRecipeLinkReader(linkFindingChannel <-chan string, recipeChannel chan<- *recipe.Recipe) {
   go func() {
     recipeLinkHash := make(map[string]string)
     for {
-      recipeLink := <-recipeFinderChannel
+      recipeLink := <-linkFindingChannel
 
       if recipeLinkHash[recipeLink] == "" {
         recipeChannel <- readRecipeLink(recipeLink)
@@ -65,8 +65,6 @@ func addRecipeLinkReader(recipeChannel chan<- *recipe.Recipe) chan<- string {
       }
     }
   }()
-
-  return recipeFinderChannel
 }
 
 func readRecipeLink(recipeUrl string) *recipe.Recipe {
