@@ -3,16 +3,16 @@ package allrecipes
 import "regexp"
 
 var (
-  translatorMap map[string]Translator
+  translatorMap map[string]HtmlTranslator
 )
 
-type Translator struct {
+type HtmlTranslator struct {
   Name string
-  Translator func(string) interface{}
+  HtmlTranslatorFunc func(string) interface{}
 }
 
 func generateTranslators(translatorConfig [][]interface{}) {
-  translatorMap = make(map[string]Translator)
+  translatorMap = make(map[string]HtmlTranslator)
 
   for _, translator := range translatorConfig {
     addTranslator(translator[0].(string),
@@ -20,8 +20,8 @@ func generateTranslators(translatorConfig [][]interface{}) {
   }
 }
 
-func addTranslator(name string, translator func(string) interface{}) {
-  translatorMap[name] = Translator{Name: name, Translator: translator}
+func addTranslator(name string, translatorFunc func(string) interface{}) {
+  translatorMap[name] = HtmlTranslator{Name: name, HtmlTranslatorFunc: translatorFunc}
 }
 
 func generateTranslator(matchRegexp string, filter func (string, *regexp.Regexp) interface{}) func(string) interface{} {
@@ -78,5 +78,5 @@ func listTupleFilter(body string, matcher *regexp.Regexp) interface{} {
 func translateHtml(name string, body string) interface{} {
   translator := translatorMap[name]
 
-  return translator.Translator(body)
+  return translator.HtmlTranslatorFunc(body)
 }

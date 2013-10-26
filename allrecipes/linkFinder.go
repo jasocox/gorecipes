@@ -2,7 +2,7 @@ package allrecipes
 
 import "log"
 
-func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string) {
+func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- string, messageBox chan string) {
   log.Println(url + ": Starting")
   body, err := readBodyFromUrl(url)
   if err != nil {
@@ -13,7 +13,7 @@ func findRecipeLinksFromUrlAndFollowNext(url string, recipeLinkChannel chan<- st
   nextLink := translateHtml("Next", body).(string)
   if nextLink != "" {
     log.Println(url + ": Found next link")
-    go findRecipeLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel)
+    go findRecipeLinksFromUrlAndFollowNext(nextLink, recipeLinkChannel, messageBox)
   } else {
     log.Println(url + ": Didn't find a next link")
   }

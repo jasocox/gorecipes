@@ -31,22 +31,29 @@ func NewRecipeReader() (<-chan *recipe.Recipe, <-chan string) {
   messageBox := make(chan string)
 
   recipeChannel := make(chan *recipe.Recipe, 100)
+  linkChannel := make(chan string, 1000)
+  linkFinderMessageBox := make(chan string)
   go func() {
     count := 0
     for {
-      count++
-      recipe := <-recipeChannel
-      reader <- recipe
-      if count >= 1 {
-        messageBox <- "done"
-        break
+      select {
+      case recipe := <-recipeChannel:
+        count++
+        reader <- recipe
+        if count >= 1 {
+          messageBox <- "done"
+          break
+        }
+      case linkFinderMessage := <-linkFinderMessageBox:
+        if linkFinderMessage == "done" {
+          log.Println("Link finder is done")
+        }
       }
     }
   }()
 
-  linkChannel := make(chan string, 1000)
-  addRecipeLinkReader(linkChannel, recipeChannel)
-  startRecipeLinkFinder(RECIPE_VIEW_ALL, linkChannel)
+  //addRecipeLinkReader(linkChannel, recipeChannel)
+  startRecipeLinkFinder(RECIPE_VIEW_ALL, linkChannel, linkFinderMessageBox)
 
   return reader, messageBox
 }
@@ -86,8 +93,8 @@ func readRecipeLink(recipeUrl string) *recipe.Recipe {
   return &r
 }
 
-func startRecipeLinkFinder(url string, recipeLinkChannel chan<- string) {
-  go findRecipeLinksFromUrlAndFollowNext(url, recipeLinkChannel)
+func startRecipeLinkFinder(url string, recipeLinkChannel chan<- string, messageBox chan) {
+  go findRecipeLinksFromUrlAndFollowNext(url, recipeLinkChannel, messageBox)
 }
 
 func translateRecipeFromBody(body string, url string) (r recipe.Recipe) {
