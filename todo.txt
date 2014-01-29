@@ -1,0 +1,25 @@
+    Halting Problem
+- Make link finding code alert the recipe processing code that it is done
+- Make the recipe reading code alert the listener that it is done
+- Make recipe reader code more obvious what is going on
+- Make a thread count and keep a max to prevent too much memory loss (also put back on queue if it fails)
+
+links:
+  http://talks.golang.org/2012/concurrency.slide
+  http://tip.golang.org/misc/vim/readme.txt
+
+
+- BUG: Remove all spaces and order requirements possible in regexes
+- BUG: Add trimming of white space from all fields
+- Store recipe info into map
+- Connect to mongodb and store there instead
+Milestone 1 reached!
+
+
+- Refactor all function calls that will be similar for all readers, make it an interface (that is used)
+- Make a web interface to view the recipes
+- Add an updated field for recipes (to see if it's changed)
+- Make the recipe adder know if the recipe is dirty or not
+- Make a path to get the json version of recipes
+- Allow getting getting only dirty recipes
+- Allow confirmation of getting dirty recipes (and marking them clean)
